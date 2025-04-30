@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Chat Secure</title>
+    <style>
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; line-height: 1.6; padding: 20px; background-color: #f7f7f7; color: #333; }
+        .container { max-width: 700px; margin: auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h1, h2 { text-align: center; color: #444; font-weight: 600; }
+        h1 { font-size: 2em; margin-bottom: 30px;}
+        h2 { font-size: 1.5em; margin-bottom: 20px; }
+        form { display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; }
+        label { font-weight: 600; font-size: 0.95em; color: #555; }
+        input[type="email"], input[type="password"], input[type="text"], textarea {
+            padding: 12px 15px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; transition: border-color 0.2s ease;
+        }
+        input:focus, textarea:focus { border-color: #007bff; outline: none; box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2); }
+        textarea { resize: vertical; }
+        button {
+            padding: 12px 20px; background: linear-gradient(135deg, #007bff, #0056b3); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 500; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0, 123, 255, 0.3);
+        }
+        button:hover { background: linear-gradient(135deg, #0069d9, #004085); box-shadow: 0 4px 10px rgba(0, 123, 255, 0.4); transform: translateY(-2px); }
+        #chat-section, #login-section { display: none; }
+        #chat-output {
+            height: 350px; overflow-y: auto; border: 1px solid #eee; padding: 15px; margin-bottom: 15px; background-color: #fdfdfd; border-radius: 6px; scroll-behavior: smooth;
+        }
+        .message { margin-bottom: 12px; padding: 10px 15px; border-radius: 15px; max-width: 85%; line-height: 1.5; word-wrap: break-word; }
+        .user-message { background-color: #e7f3ff; color: #004085; text-align: right; margin-left: auto; border-bottom-right-radius: 5px;}
+        .bot-message { background-color: #e2e3e5; color: #383d41; text-align: left; margin-right: auto; border-bottom-left-radius: 5px;}
+        #status-message { margin-top: 15px; text-align: center; font-weight: 500; min-height: 1.5em; }
+        .success { color: #155724; }
+        .error { color: #721c24; }
+        .toggle-link { text-align: center; margin-top: 15px; font-size: 0.9em; }
+        .toggle-link a { color: #007bff; cursor: pointer; text-decoration: none; font-weight: 500; }
+        .toggle-link a:hover { text-decoration: underline; }
+        #logout-button { background: linear-gradient(135deg, #dc3545, #a71d2a); margin-top: 10px; box-shadow: 0 2px 5px rgba(220, 53, 69, 0.3); }
+        #logout-button:hover { background: linear-gradient(135deg, #c82333, #921623); box-shadow: 0 4px 10px rgba(220, 53, 69, 0.4); transform: translateY(-2px); }
+        .system-prompt-area { margin-bottom: 15px; }
+        .system-prompt-area label { display: block; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gemini Chat Secure</h1>
+
+        <div id="signup-section">
+            <h2>Create Account</h2>
+            <form id="signup-form">
+                <label for="signup-gmail">Gmail:</label>
+                <input type="email" id="signup-gmail" name="gmail" required>
+
+                <label for="signup-password">Password:</label>
+                <input type="password" id="signup-password" name="password" required>
+
+                <label for="signup-apikey">Gemini API Key:</label>
+                <input type="password" id="signup-apikey" name="geminiApiKey" required>
+
+                <button type="submit">Sign Up</button>
+            </form>
+            <div class="toggle-link">
+                Already have an account? <a onclick="showView('login-section')">Login</a>
+            </div>
+        </div>
+
+        <div id="login-section">
+            <h2>Login</h2>
+            <form id="login-form">
+                <label for="login-gmail">Gmail:</label>
+                <input type="email" id="login-gmail" name="gmail" required>
+
+                <label for="login-password">Password:</label>
+                <input type="password" id="login-password" name="password" required>
+
+                <button type="submit">Login</button>
+            </form>
+             <div class="toggle-link">
+                Need an account? <a onclick="showView('signup-section')">Sign Up</a>
+            </div>
+        </div>
+
+        <div id="chat-section">
+            <h2>Gemini Chat</h2>
+            <div id="chat-output"></div>
+            <form id="chat-form">
+                 <div class="system-prompt-area">
+                    <label for="system-prompt">System Prompt (Optional):</label>
+                    <textarea id="system-prompt" placeholder="e.g., You are a helpful assistant that replies in rhyme." rows="2"></textarea>
+                </div>
+                <label for="chat-input">Your Prompt:</label>
+                <textarea id="chat-input" placeholder="Enter your prompt..." rows="3" required></textarea>
+                <button type="submit">Send</button>
+            </form>
+            <button id="logout-button" onclick="logout()">Logout</button>
+        </div>
+
+        <div id="status-message"></div>
+    </div>
+
+    <script>
+        const signupSection = document.getElementById('signup-section');
+        const loginSection = document.getElementById('login-section');
+        const chatSection = document.getElementById('chat-section');
+        const statusMessage = document.getElementById('status-message');
+        const signupForm = document.getElementById('signup-form');
+        const loginForm = document.getElementById('login-form');
+        const chatForm = document.getElementById('chat-form');
+        const chatOutput = document.getElementById('chat-output');
+        const chatInput = document.getElementById('chat-input');
+        const systemPromptInput = document.getElementById('system-prompt');
+
+        function showView(viewId) {
+            signupSection.style.display = 'none';
+            loginSection.style.display = 'none';
+            chatSection.style.display = 'none';
+            const viewToShow = document.getElementById(viewId);
+            if (viewToShow) {
+                viewToShow.style.display = 'block';
+            }
+            setStatus('');
+        }
+
+        function setStatus(message, isError = false) {
+            statusMessage.textContent = message;
+            statusMessage.className = isError ? 'error' : 'success';
+            statusMessage.style.display = message ? 'block' : 'none';
+        }
+
+        function appendMessage(text, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', type === 'user' ? 'user-message' : 'bot-message');
+            messageDiv.textContent = text; // Use textContent to prevent XSS
+            chatOutput.appendChild(messageDiv);
+            // Scroll to the bottom
+            chatOutput.scrollTop = chatOutput.scrollHeight;
+        }
+
+        function logout() {
+            localStorage.removeItem('userGmail');
+            showView('login-section');
+            chatOutput.innerHTML = '';
+            systemPromptInput.value = '';
+            chatInput.value = '';
+        }
+
+        async function handleFormSubmit(url, formData, formElement, successCallback) {
+             setStatus('Processing...');
+             const data = Object.fromEntries(formData.entries());
+
+             try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    setStatus(result.message || 'Operation successful!', false);
+                    if (formElement) formElement.reset();
+                    if (successCallback) successCallback(data, result);
+                } else {
+                    setStatus(result.message || `Operation failed (Status: ${response.status})`, true);
+                }
+            } catch (err) {
+                setStatus('An network or server error occurred.', true);
+                console.error('Fetch Error:', err);
+            }
+        }
+
+
+        signupForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleFormSubmit('/api/signup', new FormData(signupForm), signupForm, () => {
+                showView('login-section');
+            });
+        });
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleFormSubmit('/api/login', new FormData(loginForm), loginForm, (formData) => {
+                 localStorage.setItem('userGmail', formData.gmail);
+                 showView('chat-section');
+            });
+        });
+
+         chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const prompt = chatInput.value.trim();
+            const systemPrompt = systemPromptInput.value.trim();
+            const userGmail = localStorage.getItem('userGmail');
+
+            if (!prompt || !userGmail) {
+                setStatus('Cannot send message. Ensure you are logged in and message is not empty.', true);
+                return;
+            }
+
+            appendMessage(prompt, 'user');
+            chatInput.value = ''; // Clear input after sending
+            setStatus('Sending...'); // Indicate processing
+
+            const payload = {
+                gmail: userGmail,
+                prompt: prompt,
+                ...(systemPrompt && { systemPrompt: systemPrompt }) // Conditionally add systemPrompt
+            };
+
+             try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                 if (response.ok && result.success) {
+                     appendMessage(result.response || 'Received empty response.', 'bot');
+                     setStatus(''); // Clear status on success
+                 } else {
+                    const errorMessage = `Error: ${result.message || 'Failed to get response.'}`;
+                    appendMessage(errorMessage, 'bot');
+                    setStatus(errorMessage, true);
+                 }
+
+            } catch (err) {
+                 const networkErrorMsg = `Error: A network error occurred while contacting the server.`;
+                 appendMessage(networkErrorMsg, 'bot');
+                 setStatus(networkErrorMsg, true);
+                 console.error('Chat Fetch Error:', err);
+            }
+        });
+
+        // Initial view check
+        if (localStorage.getItem('userGmail')) {
+            showView('chat-section');
+        } else {
+            showView('signup-section'); // Start with signup by default
+        }
+
+    </script>
+</body>
+</html>
